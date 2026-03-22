@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 
 # ============================================================
-#  install.sh — Richtet fokus ein
-#  Einmalig ausführen mit: bash install.sh
+#  install.sh — Installiert den "fokus" Website-Blocker
 # ============================================================
 
 GREEN='\033[0;32m'
@@ -17,41 +16,44 @@ echo ""
 echo -e "${BOLD}  fokus — Installation${NC}"
 echo ""
 
-# Auf btrfs prüfen und Nutzer informieren
-FS=$(df -T /etc/hosts 2>/dev/null | awk 'NR==2{print $2}')
-if [[ "$FS" == "btrfs" ]]; then
-    echo -e "  Dateisystem: ${CYAN}btrfs${NC} erkannt — Immutable-Modus via chmod"
-else
-    echo -e "  Dateisystem: ${CYAN}${FS}${NC} erkannt — Immutable-Modus via chattr"
+# Überprüfungen
+if [[ ! -f "$SCRIPT_DIR/fokus.py" ]]; then
+    echo -e "  ${RED}Fehler:${NC} fokus.py wurde nicht im Ordner gefunden."
+    exit 1
 fi
 
-# chattr prüfen (nur relevant bei ext4)
-if [[ "$FS" != "btrfs" ]] && ! command -v chattr &>/dev/null; then
-    echo -e "  ${RED}Warnung:${NC} chattr nicht gefunden. Bitte e2fsprogs installieren:"
-    echo -e "    Arch:   ${CYAN}sudo pacman -S e2fsprogs${NC}"
-    echo -e "    Fedora: ${CYAN}sudo dnf install e2fsprogs${NC}"
+if ! command -v python3 &>/dev/null; then
+    echo -e "  ${RED}Fehler:${NC} python3 ist nicht installiert."
+    exit 1
+fi
+
+if ! command -v chattr &>/dev/null; then
+    echo -e "  ${RED}Warnung:${NC} 'chattr' nicht gefunden. Manipulationsschutz könnte eingeschränkt sein."
+    echo -e "  Bitte installiere 'e2fsprogs' (Arch: pacman -S e2fsprogs, Ubuntu: apt install e2fsprogs)"
     echo ""
 fi
 
-chmod +x "$SCRIPT_DIR/fokus.sh"
-echo -e "  ${GREEN}✓${NC} fokus.sh als ausführbar markiert"
-
-sudo cp "$SCRIPT_DIR/fokus.sh" /usr/local/bin/fokus
+# Installation
+sudo cp "$SCRIPT_DIR/fokus.py" /usr/local/bin/fokus
 sudo chmod +x /usr/local/bin/fokus
-echo -e "  ${GREEN}✓${NC} Skript nach /usr/local/bin/fokus kopiert"
+echo -e "  ${GREEN}✓${NC} fokus installiert nach /usr/local/bin/fokus"
 
+# Backup der hosts-Datei (falls nicht existent)
 if [[ ! -f /etc/hosts.backup ]]; then
     sudo cp /etc/hosts /etc/hosts.backup
     echo -e "  ${GREEN}✓${NC} Backup erstellt: /etc/hosts.backup"
-else
-    echo -e "  ${CYAN}·${NC} Backup existiert bereits (/etc/hosts.backup)"
 fi
 
+# Initiale Config erstellen
+sudo fokus status > /dev/null
+echo -e "  ${GREEN}✓${NC} Konfiguration angelegt in /etc/fokus.conf"
+
 echo ""
-echo -e "  ${GREEN}${BOLD}Installation abgeschlossen.${NC}"
+echo -e "  ${GREEN}${BOLD}Installation abgeschlossen!${NC}"
 echo ""
-echo -e "  ${CYAN}sudo fokus start${NC}           Blocking aktivieren"
-echo -e "  ${CYAN}sudo fokus stop${NC}            Blocking deaktivieren"
-echo -e "  ${CYAN}sudo fokus lock <minuten>${NC}  stop für X Minuten sperren"
-echo -e "  ${CYAN}fokus status${NC}               Status anzeigen"
+echo -e "  Befehle:"
+echo -e "  ${CYAN}sudo fokus start${NC}           Blockierung aktivieren"
+echo -e "  ${CYAN}sudo fokus stop${NC}            Blockierung aufheben"
+echo -e "  ${CYAN}sudo fokus lock 60${NC}         Stop-Befehl für 60 Min. sperren"
+echo -e "  ${CYAN}fokus status${NC}               Status abfragen"
 echo ""
